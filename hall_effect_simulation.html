@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hall Effect Sensor Simulation — A3144 BY Tenzin Wangchu Khongsai</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #0b0f1a;
+  color: #e0eaff;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  min-height: 100vh;
+}
+header {
+  text-align: center;
+  padding: 20px 16px 8px;
+  background: linear-gradient(180deg, #0d1730 0%, transparent 100%);
+}
+header h1 { font-size: 20px; font-weight: 600; color: #5eead4; letter-spacing: 0.5px; }
+header p  { font-size: 12px; color: #64748b; margin-top: 3px; }
+
+.main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 16px;
+  gap: 14px;
+}
+
+/* ── Scene canvas ── */
+canvas#scene {
+  border: 1.5px solid #1e3a5f;
+  border-radius: 12px;
+  background: #070c18;
+  max-width: 100%;
+  display: block;
+}
+
+/* ── Graph canvas ── */
+canvas#graph {
+  border: 1.5px solid #1e3a5f;
+  border-radius: 12px;
+  background: #070c18;
+  max-width: 100%;
+  display: block;
+}
+
+.two-col {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  max-width: 760px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Stats row ── */
+.stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 760px;
+}
+.stat-box {
+  background: #0d1a35;
+  border: 1px solid #1e3a5f;
+  border-radius: 10px;
+  padding: 10px 18px;
+  text-align: center;
+  flex: 1;
+  min-width: 110px;
+}
+.stat-box .sv { font-size: 22px; font-weight: 700; }
+.stat-box .sl { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.7px; margin-top: 2px; }
+.teal   { color: #2dd4bf; }
+.green  { color: #4ade80; }
+.red    { color: #f87171; }
+.amber  { color: #fbbf24; }
+.blue   { color: #60a5fa; }
+
+/* ── Controls ── */
+.ctrl-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 760px;
+}
+.ctrl-card {
+  background: #0d1a35;
+  border: 1px solid #1e3a5f;
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 150px;
+}
+.ctrl-card label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; }
+.ctrl-card .cv   { font-size: 19px; font-weight: 600; color: #5eead4; }
+.ctrl-card input[type=range] { width: 100%; accent-color: #2dd4bf; cursor: pointer; }
+
+/* ── Buttons ── */
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+button {
+  padding: 9px 22px;
+  border-radius: 8px;
+  border: 1.5px solid #1e4a7f;
+  background: #0d2040;
+  color: #5eead4;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+button:hover  { background: #1a3a6a; }
+button:active { transform: scale(.97); }
+button.danger { border-color: #7f2020; color: #f87171; background: #1a0d0d; }
+button.danger:hover { background: #2a1010; }
+
+/* ── Info bar ── */
+.info-bar {
+  background: #0d1a35;
+  border: 1px solid #1e3a5f;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 12px;
+  color: #5eead4;
+  max-width: 760px;
+  width: 100%;
+  text-align: center;
+  min-height: 36px;
+  line-height: 1.5;
+}
+
+/* ── Legend ── */
+.legend {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  justify-content: center; font-size: 11px; color: #94a3b8;
+}
+.legend span { display: flex; align-items: center; gap: 5px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+footer { text-align:center; padding:12px; font-size:10px; color:#334155; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Hall Effect Sensor (A3144) — Magnetic Field Detection Simulation</h1>
+  <p>B.E C.S.E· SIMATS Engineering College ·B.S IN DATA SCIENCE AND APPLICATIONS ·IIT MADRAS  · Tenzin Wangchu khongsai </p>
+</header>
+
+<div class="main">
+
+  <!-- Scene -->
+  <canvas id="scene" width="760" height="260"></canvas>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-box"><div class="sv teal"  id="sDist">0 mm</div><div class="sl">Distance</div></div>
+    <div class="stat-box"><div class="sv amber" id="sField">Strong</div><div class="sl">Field Strength</div></div>
+    <div class="stat-box"><div class="sv green" id="sOutput">1</div><div class="sl">Sensor Output</div></div>
+    <div class="stat-box"><div class="sv blue"  id="sVhall">High</div><div class="sl">Hall Voltage</div></div>
+    <div class="stat-box"><div class="sv"        id="sStatus" style="color:#4ade80">DETECTED</div><div class="sl">Status</div></div>
+  </div>
+
+  <!-- Two canvases: graph + field lines side by side -->
+  <div class="two-col">
+    <canvas id="graph"  width="380" height="240"></canvas>
+    <canvas id="fieldv" width="360" height="240"></canvas>
+  </div>
+
+  <!-- Controls -->
+  <div class="ctrl-row">
+    <div class="ctrl-card">
+      <label>Magnet Distance (mm)</label>
+      <div class="cv" id="vDist">0 mm</div>
+      <input type="range" id="slDist" min="0" max="40" value="0" step="1">
+    </div>
+    <div class="ctrl-card">
+      <label>Magnet Strength</label>
+      <div class="cv" id="vStrength">Strong</div>
+      <input type="range" id="slStrength" min="1" max="3" value="2" step="1">
+    </div>
+    <div class="ctrl-card">
+      <label>Animation Speed</label>
+      <div class="cv" id="vSpeed">Normal</div>
+      <input type="range" id="slSpeed" min="1" max="3" value="2" step="1">
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button id="btnAuto">▶ Auto Sweep</button>
+    <button id="btnPause">⏸ Pause</button>
+    <button class="danger" id="btnReset">↺ Reset</button>
+  </div>
+
+  <div class="info-bar" id="infoBar">Drag the distance slider or press Auto Sweep to animate the magnet moving away from the sensor.</div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:#ef4444"></span> Magnet (N pole)</span>
+    <span><span class="dot" style="background:#3b82f6"></span> Hall Sensor (A3144)</span>
+    <span><span class="dot" style="background:#fbbf24"></span> Magnetic field lines</span>
+    <span><span class="dot" style="background:#4ade80"></span> Detected (Output=1)</span>
+    <span><span class="dot" style="background:#f87171"></span> Not detected (Output=0)</span>
+  </div>
+
+</div>
+
+<footer>Hall Effect Sensor Simulation · Engineering Physics Project </footer>
+
+<script>
+/* ===== DATA FROM GRAPH (A3144 Response vs Magnet Distance) =====
+   Distance(mm): 0,  5,  10, 15, 20,  25,  30, 35, 40
+   Output:       1.0,1.0,1.0,1.0,0.50,0.20,0.0,0.0,0.0
+================================================================ */
+const DATA_X = [0, 5, 10, 15, 20,   25,  30, 35, 40];
+const DATA_Y = [1, 1,  1,  1, 0.50, 0.20, 0,  0,  0];
+
+function getSensorOutput(dist, strength) {
+  const multiplier = strength === 1 ? 0.7 : strength === 3 ? 1.3 : 1.0;
+  const effectiveDist = dist / multiplier;
+  if (effectiveDist <= 15) return 1.0;
+  if (effectiveDist >= 30) return 0.0;
+  if (effectiveDist < 20) return 1.0 - (effectiveDist - 15) / 5 * 0.5;
+  if (effectiveDist < 25) return 0.5 - (effectiveDist - 20) / 5 * 0.3;
+  return 0.2 - (effectiveDist - 25) / 5 * 0.2;
+}
+
+function getFieldStrength(dist, strength) {
+  const multiplier = strength === 1 ? 0.7 : strength === 3 ? 1.3 : 1.0;
+  const B = Math.max(0, 1 - (dist / (30 * multiplier)));
+  return Math.min(1, B);
+}
+
+/* ===== STATE ===== */
+let dist = 0;
+let strength = 2;
+let speed = 2;
+let autoSweep = false;
+let sweepDir = 1;
+let animId = null;
+let frameCount = 0;
+let particles = [];
+
+/* ===== CANVAS REFS ===== */
+const sceneCanvas = document.getElementById('scene');
+const sc = sceneCanvas.getContext('2d');
+const SW = sceneCanvas.width, SH = sceneCanvas.height;
+
+const graphCanvas = document.getElementById('graph');
+const gc = graphCanvas.getContext('2d');
+const GW = graphCanvas.width, GH = graphCanvas.height;
+
+const fieldCanvas = document.getElementById('fieldv');
+const fc = fieldCanvas.getContext('2d');
+const FW = fieldCanvas.width, FH = fieldCanvas.height;
+
+/* ===== PARTICLES (charge carriers) ===== */
+function spawnParticle(output) {
+  return {
+    x: 490 + Math.random() * 80,
+    y: SH / 2 + (Math.random() - 0.5) * 60,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: output > 0.1 ? (Math.random() > 0.5 ? -1.2 : 1.2) * output : (Math.random() - 0.5) * 0.2,
+    life: 1,
+    type: Math.random() > 0.5 ? 'pos' : 'neg',
+    deflected: output > 0.1,
+  };
+}
+
+function updateParticles(output) {
+  if (frameCount % 4 === 0) particles.push(spawnParticle(output));
+  if (particles.length > 60) particles.splice(0, 10);
+  for (let p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 0.015;
+    if (p.deflected) p.vx += 0.04;
+  }
+  particles = particles.filter(p => p.life > 0 && p.x < SW - 20);
+}
+
+/* ===== DRAW SCENE ===== */
+function drawScene() {
+  sc.clearRect(0, 0, SW, SH);
+
+  // Background grid
+  sc.strokeStyle = '#0f1e36';
+  sc.lineWidth = 0.5;
+  for (let x = 0; x < SW; x += 40) { sc.beginPath(); sc.moveTo(x,0); sc.lineTo(x,SH); sc.stroke(); }
+  for (let y = 0; y < SH; y += 40) { sc.beginPath(); sc.moveTo(0,y); sc.lineTo(SW,y); sc.stroke(); }
+
+  const output  = getSensorOutput(dist, strength);
+  const fieldB  = getFieldStrength(dist, strength);
+  const threshold = strength === 1 ? 25 : strength === 3 ? 35 : 30;
+  const detected  = output >= 0.05;
+
+  // ---- Sensor body (right side) ----
+  const sensorX = 500, sensorY = SH / 2;
+  const sW = 60, sH = 80;
+
+  // PCB base
+  sc.fillStyle = '#166534';
+  sc.beginPath();
+  sc.roundRect(sensorX - sW/2, sensorY - sH/2, sW, sH, 6);
+  sc.fill();
+  sc.strokeStyle = '#15803d';
+  sc.lineWidth = 1.5;
+  sc.stroke();
+
+  // Sensor chip label
+  sc.fillStyle = '#bbf7d0';
+  sc.font = 'bold 11px Segoe UI';
+  sc.textAlign = 'center';
+  sc.fillText('A3144', sensorX, sensorY - 8);
+  sc.font = '9px Segoe UI';
+  sc.fillStyle = '#86efac';
+  sc.fillText('HALL SENSOR', sensorX, sensorY + 6);
+
+  // LED indicator
+  const ledColor = detected ? '#4ade80' : '#374151';
+  const ledGlow  = detected ? 'rgba(74,222,128,0.4)' : 'transparent';
+  if (detected) {
+    sc.beginPath();
+    sc.arc(sensorX, sensorY + 24, 14, 0, Math.PI * 2);
+    sc.fillStyle = 'rgba(74,222,128,0.15)';
+    sc.fill();
+  }
+  sc.beginPath();
+  sc.arc(sensorX, sensorY + 24, 7, 0, Math.PI * 2);
+  sc.fillStyle = ledColor;
+  sc.fill();
+  sc.fillStyle = detected ? '#fff' : '#6b7280';
+  sc.font = '8px Segoe UI';
+  sc.fillText(detected ? 'ON' : 'OFF', sensorX, sensorY + 27);
+
+  // Output pins
+  for (let i = 0; i < 3; i++) {
+    sc.fillStyle = '#fbbf24';
+    sc.fillRect(sensorX - 20 + i * 20 - 3, sensorY + sH / 2, 6, 14);
+  }
+  sc.fillStyle = '#94a3b8';
+  sc.font = '8px Segoe UI';
+  ['VCC','OUT','GND'].forEach((l, i) => { sc.fillText(l, sensorX - 20 + i * 20, sensorY + sH/2 + 24); });
+
+  // Output signal line
+  const sigColor = detected ? '#4ade80' : '#f87171';
+  sc.strokeStyle = sigColor;
+  sc.lineWidth = 2;
+  sc.setLineDash([4, 3]);
+  sc.beginPath();
+  sc.moveTo(sensorX + sW / 2, sensorY - 10);
+  sc.lineTo(SW - 30, sensorY - 10);
+  sc.stroke();
+  sc.setLineDash([]);
+  // Signal label
+  sc.fillStyle = sigColor;
+  sc.font = 'bold 11px Segoe UI';
+  sc.textAlign = 'left';
+  sc.fillText(`OUT = ${output.toFixed(2)}`, SW - 120, sensorY - 14);
+
+  // ---- Magnet position ----
+  const maxMagX = sensorX - sW/2 - 20;
+  const minMagX = 60;
+  const magX = minMagX + (maxMagX - minMagX) * (1 - dist / 40);
+  const magY = sensorY;
+  const mW = 50, mH = 80;
+
+  // Magnetic field lines (between magnet and sensor)
+  const numLines = 7;
+  for (let i = 0; i < numLines; i++) {
+    const t    = i / (numLines - 1);
+    const lineY = magY - mH / 2 + t * mH;
+    const alpha = fieldB * (1 - Math.abs(t - 0.5) * 0.8) * 0.7;
+    sc.strokeStyle = `rgba(251,191,36,${alpha})`;
+    sc.lineWidth = 1;
+    sc.setLineDash([3, 4]);
+    sc.beginPath();
+    sc.moveTo(magX + mW / 2, lineY);
+    sc.bezierCurveTo(
+      magX + mW / 2 + 40, lineY - 10,
+      sensorX - sW / 2 - 40, lineY - 10,
+      sensorX - sW / 2, lineY
+    );
+    sc.stroke();
+  }
+  sc.setLineDash([]);
+
+  // Magnet body
+  sc.fillStyle = '#991b1b';
+  sc.beginPath();
+  sc.roundRect(magX - mW/2, magY - mH/2, mW, mH/2, [6,6,0,0]);
+  sc.fill();
+  sc.fillStyle = '#1e3a8a';
+  sc.beginPath();
+  sc.roundRect(magX - mW/2, magY, mW, mH/2, [0,0,6,6]);
+  sc.fill();
+  sc.fillStyle = '#fecaca';
+  sc.font = 'bold 14px Segoe UI';
+  sc.textAlign = 'center';
+  sc.fillText('N', magX, magY - 12);
+  sc.fillStyle = '#bfdbfe';
+  sc.fillText('S', magX, magY + 30);
+
+  // Distance arrow
+  const arrowY = SH - 28;
+  sc.strokeStyle = '#475569';
+  sc.lineWidth = 1;
+  sc.beginPath();
+  sc.moveTo(magX + mW/2, arrowY);
+  sc.lineTo(sensorX - sW/2, arrowY);
+  sc.stroke();
+  // arrowheads
+  [[magX + mW/2, -1],[sensorX - sW/2, 1]].forEach(([ax, dir]) => {
+    sc.beginPath();
+    sc.moveTo(ax, arrowY);
+    sc.lineTo(ax + dir*8, arrowY - 4);
+    sc.lineTo(ax + dir*8, arrowY + 4);
+    sc.fillStyle = '#475569';
+    sc.fill();
+  });
+  sc.fillStyle = '#94a3b8';
+  sc.font = '11px Segoe UI';
+  sc.textAlign = 'center';
+  sc.fillText(`${dist} mm`, (magX + mW/2 + sensorX - sW/2) / 2, arrowY - 6);
+
+  // Threshold indicator
+  const thresholdDist = threshold;
+  const threshX = minMagX + (maxMagX - minMagX) * (1 - thresholdDist / 40) + mW/2;
+  sc.strokeStyle = 'rgba(248,113,113,0.5)';
+  sc.setLineDash([5, 4]);
+  sc.lineWidth = 1.5;
+  sc.beginPath();
+  sc.moveTo(threshX, 10);
+  sc.lineTo(threshX, SH - 40);
+  sc.stroke();
+  sc.setLineDash([]);
+  sc.fillStyle = '#f87171';
+  sc.font = '9px Segoe UI';
+  sc.textAlign = 'center';
+  sc.fillText(`Threshold (${threshold}mm)`, threshX, 22);
+
+  // Lorentz force arrow on sensor
+  if (output > 0.1) {
+    const arrowLen = 30 * output;
+    sc.strokeStyle = '#818cf8';
+    sc.lineWidth = 2;
+    sc.beginPath();
+    sc.moveTo(sensorX, sensorY - 30);
+    sc.lineTo(sensorX, sensorY - 30 - arrowLen);
+    sc.stroke();
+    sc.beginPath();
+    sc.moveTo(sensorX, sensorY - 30 - arrowLen);
+    sc.lineTo(sensorX - 5, sensorY - 30 - arrowLen + 8);
+    sc.lineTo(sensorX + 5, sensorY - 30 - arrowLen + 8);
+    sc.closePath();
+    sc.fillStyle = '#818cf8';
+    sc.fill();
+    sc.fillStyle = '#a5b4fc';
+    sc.font = '9px Segoe UI';
+    sc.textAlign = 'center';
+    sc.fillText('Lorentz F', sensorX + 28, sensorY - 30 - arrowLen / 2);
+  }
+
+  // Particles (carrier deflection)
+  updateParticles(output);
+  for (let p of particles) {
+    sc.globalAlpha = p.life * 0.9;
+    sc.beginPath();
+    sc.arc(p.x, p.y, 3, 0, Math.PI * 2);
+    sc.fillStyle = p.type === 'pos' ? '#f472b6' : '#38bdf8';
+    sc.fill();
+    sc.fillStyle = p.type === 'pos' ? '#fda4af' : '#7dd3fc';
+    sc.font = '8px Segoe UI';
+    sc.textAlign = 'center';
+    sc.fillText(p.type === 'pos' ? '+' : '−', p.x, p.y + 3);
+  }
+  sc.globalAlpha = 1;
+
+  // Labels
+  sc.fillStyle = '#334155';
+  sc.font = '10px Segoe UI';
+  sc.textAlign = 'center';
+  sc.fillText('MAGNET', magX, magY - mH/2 - 8);
+
+  // Status badge
+  const badge = detected ? '#14532d' : '#450a0a';
+  const badgeText = detected ? '#4ade80' : '#f87171';
+  sc.fillStyle = badge;
+  sc.beginPath();
+  sc.roundRect(SW - 130, 10, 120, 28, 6);
+  sc.fill();
+  sc.fillStyle = badgeText;
+  sc.font = 'bold 12px Segoe UI';
+  sc.textAlign = 'center';
+  sc.fillText(detected ? '● MAGNET DETECTED' : '○ NO MAGNET', SW - 70, 29);
+}
+
+/* ===== DRAW GRAPH ===== */
+function drawGraph() {
+  gc.clearRect(0, 0, GW, GH);
+  const pad = { l: 50, r: 20, t: 30, b: 45 };
+  const pw = GW - pad.l - pad.r;
+  const ph = GH - pad.t - pad.b;
+
+  // Background
+  gc.fillStyle = '#070c18';
+  gc.fillRect(0, 0, GW, GH);
+
+  // Grid
+  gc.strokeStyle = '#0f1e36';
+  gc.lineWidth = 0.5;
+  for (let i = 0; i <= 5; i++) {
+    const y = pad.t + ph * (1 - i / 5);
+    gc.beginPath(); gc.moveTo(pad.l, y); gc.lineTo(GW - pad.r, y); gc.stroke();
+    gc.fillStyle = '#334155';
+    gc.font = '9px Segoe UI';
+    gc.textAlign = 'right';
+    gc.fillText((i * 0.2).toFixed(1), pad.l - 4, y + 3);
+  }
+  for (let i = 0; i <= 8; i++) {
+    const x = pad.l + pw * (i / 8);
+    gc.beginPath(); gc.moveTo(x, pad.t); gc.lineTo(x, pad.t + ph); gc.stroke();
+    gc.fillStyle = '#334155';
+    gc.font = '9px Segoe UI';
+    gc.textAlign = 'center';
+    gc.fillText(i * 5, x, pad.t + ph + 14);
+  }
+
+  // Axes
+  gc.strokeStyle = '#475569';
+  gc.lineWidth = 1;
+  gc.beginPath();
+  gc.moveTo(pad.l, pad.t); gc.lineTo(pad.l, pad.t + ph);
+  gc.moveTo(pad.l, pad.t + ph); gc.lineTo(GW - pad.r, pad.t + ph);
+  gc.stroke();
+
+  // Axis labels
+  gc.fillStyle = '#64748b';
+  gc.font = '10px Segoe UI';
+  gc.textAlign = 'center';
+  gc.fillText('Distance — Magnet to Sensor (mm)', GW / 2, GH - 5);
+  gc.save();
+  gc.translate(12, GH / 2);
+  gc.rotate(-Math.PI / 2);
+  gc.fillText('Sensor Output (Digital)', 0, 0);
+  gc.restore();
+
+  // Title
+  gc.fillStyle = '#94a3b8';
+  gc.font = 'bold 10px Segoe UI';
+  gc.textAlign = 'center';
+  gc.fillText('A3144 Response vs Magnet Distance', GW / 2, 16);
+
+  // Threshold fill zones
+  const tx30 = pad.l + pw * (30 / 40);
+  gc.fillStyle = 'rgba(74,222,128,0.06)';
+  gc.fillRect(pad.l, pad.t, tx30 - pad.l, ph);
+  gc.fillStyle = 'rgba(248,113,113,0.06)';
+  gc.fillRect(tx30, pad.t, GW - pad.r - tx30, ph);
+
+  // Data curve (from graph data)
+  gc.strokeStyle = '#3b82f6';
+  gc.lineWidth = 2.5;
+  gc.beginPath();
+  DATA_X.forEach((dx, i) => {
+    const x = pad.l + pw * (dx / 40);
+    const y = pad.t + ph * (1 - DATA_Y[i]);
+    i === 0 ? gc.moveTo(x, y) : gc.lineTo(x, y);
+  });
+  gc.stroke();
+
+  // Data points
+  DATA_X.forEach((dx, i) => {
+    const x = pad.l + pw * (dx / 40);
+    const y = pad.t + ph * (1 - DATA_Y[i]);
+    gc.beginPath();
+    gc.arc(x, y, 4, 0, Math.PI * 2);
+    gc.fillStyle = '#3b82f6';
+    gc.fill();
+    gc.beginPath();
+    gc.arc(x, y, 2, 0, Math.PI * 2);
+    gc.fillStyle = '#fff';
+    gc.fill();
+  });
+
+  // Live marker
+  const curOutput = getSensorOutput(dist, strength);
+  const mx = pad.l + pw * (dist / 40);
+  const my = pad.t + ph * (1 - curOutput);
+  // vertical line
+  gc.strokeStyle = 'rgba(248,113,113,0.6)';
+  gc.lineWidth = 1;
+  gc.setLineDash([4, 3]);
+  gc.beginPath(); gc.moveTo(mx, pad.t); gc.lineTo(mx, pad.t + ph); gc.stroke();
+  gc.setLineDash([]);
+  // live dot
+  gc.beginPath();
+  gc.arc(mx, my, 7, 0, Math.PI * 2);
+  gc.fillStyle = 'rgba(248,113,113,0.3)';
+  gc.fill();
+  gc.beginPath();
+  gc.arc(mx, my, 4, 0, Math.PI * 2);
+  gc.fillStyle = '#f87171';
+  gc.fill();
+  gc.fillStyle = '#f87171';
+  gc.font = 'bold 9px Segoe UI';
+  gc.textAlign = 'center';
+  gc.fillText(`▲ ${dist}mm`, mx, my - 12);
+}
+
+/* ===== DRAW FIELD VISUALISER ===== */
+function drawFieldViz() {
+  fc.clearRect(0, 0, FW, FH);
+  fc.fillStyle = '#070c18';
+  fc.fillRect(0, 0, FW, FH);
+
+  const fieldB = getFieldStrength(dist, strength);
+  const output = getSensorOutput(dist, strength);
+
+  // Title
+  fc.fillStyle = '#94a3b8';
+  fc.font = 'bold 10px Segoe UI';
+  fc.textAlign = 'center';
+  fc.fillText('Magnetic Flux Density Visualiser', FW / 2, 16);
+
+  // Circular field rings
+  const cx = FW / 2 - 30, cy = FH / 2 + 10;
+  for (let r = 10; r < 100; r += 18) {
+    const alpha = fieldB * Math.max(0, 1 - r / 100) * 0.8;
+    fc.beginPath();
+    fc.arc(cx, cy, r, 0, Math.PI * 2);
+    fc.strokeStyle = `rgba(251,191,36,${alpha})`;
+    fc.lineWidth = 1.5;
+    fc.stroke();
+  }
+
+  // Magnet dot
+  fc.beginPath(); fc.arc(cx, cy, 10, 0, Math.PI * 2);
+  fc.fillStyle = '#ef4444'; fc.fill();
+  fc.fillStyle = '#fca5a5'; fc.font = 'bold 9px Segoe UI'; fc.textAlign = 'center';
+  fc.fillText('N', cx, cy + 4);
+
+  // Sensor rect
+  const sx = cx + 80 + dist * 1.5;
+  if (sx < FW - 30) {
+    fc.fillStyle = output >= 0.05 ? '#14532d' : '#1f2937';
+    fc.beginPath(); fc.roundRect(sx - 12, cy - 20, 24, 40, 4); fc.fill();
+    fc.fillStyle = output >= 0.05 ? '#4ade80' : '#6b7280';
+    fc.font = '8px Segoe UI'; fc.textAlign = 'center';
+    fc.fillText('SENS', sx, cy + 4);
+  }
+
+  // B-field bar
+  const barX = FW - 55, barY = 35, barH = FH - 70;
+  fc.fillStyle = '#0f1e36';
+  fc.fillRect(barX, barY, 20, barH);
+  const fillH = barH * fieldB;
+  const barGrad = fc.createLinearGradient(0, barY + barH - fillH, 0, barY + barH);
+  barGrad.addColorStop(0, '#fbbf24');
+  barGrad.addColorStop(1, '#f59e0b');
+  fc.fillStyle = barGrad;
+  fc.fillRect(barX, barY + barH - fillH, 20, fillH);
+  fc.strokeStyle = '#1e3a5f'; fc.lineWidth = 1;
+  fc.strokeRect(barX, barY, 20, barH);
+  fc.fillStyle = '#94a3b8'; fc.font = '9px Segoe UI'; fc.textAlign = 'center';
+  fc.fillText('B', barX + 10, barY - 6);
+  fc.fillText((fieldB * 100).toFixed(0) + '%', barX + 10, barY + barH + 14);
+
+  // Hall voltage label
+  fc.fillStyle = output >= 0.05 ? '#4ade80' : '#f87171';
+  fc.font = 'bold 11px Segoe UI';
+  fc.textAlign = 'left';
+  fc.fillText(`VH = ${output >= 0.05 ? 'HIGH' : 'LOW'}`, 14, FH - 20);
+  fc.fillStyle = '#64748b'; fc.font = '9px Segoe UI';
+  fc.fillText(`Output: ${output.toFixed(2)}`, 14, FH - 8);
+}
+
+/* ===== UPDATE STATS ===== */
+function updateStats() {
+  const output = getSensorOutput(dist, strength);
+  const fieldB = getFieldStrength(dist, strength);
+  const detected = output >= 0.05;
+
+  document.getElementById('sDist').textContent = dist + ' mm';
+  document.getElementById('sField').textContent =
+    fieldB > 0.7 ? 'Strong' : fieldB > 0.3 ? 'Moderate' : fieldB > 0 ? 'Weak' : 'None';
+  document.getElementById('sField').className = 'sv ' +
+    (fieldB > 0.7 ? 'amber' : fieldB > 0.3 ? 'blue' : 'red');
+  document.getElementById('sOutput').textContent = output.toFixed(2);
+  document.getElementById('sOutput').className = 'sv ' + (detected ? 'green' : 'red');
+  document.getElementById('sVhall').textContent = detected ? 'High' : 'Low';
+  document.getElementById('sVhall').className = 'sv ' + (detected ? 'blue' : 'red');
+  document.getElementById('sStatus').textContent = detected ? 'DETECTED' : 'NO MAGNET';
+  document.getElementById('sStatus').className = 'sv ' + (detected ? 'green' : 'red');
+
+  // Info bar
+  let info = '';
+  if (dist <= 15)       info = `At ${dist}mm: Strong magnetic field → Lorentz force deflects charge carriers → Hall voltage HIGH → Sensor Output = 1 (Magnet Detected)`;
+  else if (dist <= 20)  info = `At ${dist}mm: Magnetic field weakening (${(getSensorOutput(dist,strength)*100).toFixed(0)}%) → Carrier deflection reducing → Hall voltage dropping. Near threshold.`;
+  else if (dist <= 29)  info = `At ${dist}mm: Field below optimal range → Output dropping to ${getSensorOutput(dist,strength).toFixed(2)}. Sensor transitioning to undetected state.`;
+  else                  info = `At ${dist}mm: Magnetic field too weak → No Lorentz force → No Hall voltage → Output = 0 (No Magnet). Arduino prints "No Magnet" on Serial Monitor.`;
+  document.getElementById('infoBar').textContent = info;
+}
+
+/* ===== RENDER ALL ===== */
+function render() {
+  drawScene();
+  drawGraph();
+  drawFieldViz();
+  updateStats();
+}
+
+/* ===== AUTO SWEEP ANIMATION ===== */
+function autoAnimate() {
+  if (!autoSweep) return;
+  const step = speed === 1 ? 0.15 : speed === 3 ? 0.5 : 0.3;
+  dist = parseFloat((dist + sweepDir * step).toFixed(2));
+  if (dist >= 40) { dist = 40; sweepDir = -1; }
+  if (dist <= 0)  { dist = 0;  sweepDir = 1;  }
+  document.getElementById('slDist').value = Math.round(dist);
+  document.getElementById('vDist').textContent = Math.round(dist) + ' mm';
+  frameCount++;
+  render();
+  animId = requestAnimationFrame(autoAnimate);
+}
+
+/* ===== SLIDER EVENTS ===== */
+document.getElementById('slDist').addEventListener('input', function() {
+  dist = parseInt(this.value);
+  document.getElementById('vDist').textContent = dist + ' mm';
+  frameCount++;
+  render();
+});
+
+document.getElementById('slStrength').addEventListener('input', function() {
+  strength = parseInt(this.value);
+  const labels = ['Weak','Strong','Very Strong'];
+  document.getElementById('vStrength').textContent = labels[strength - 1];
+  render();
+});
+
+document.getElementById('slSpeed').addEventListener('input', function() {
+  speed = parseInt(this.value);
+  const labels = ['Slow','Normal','Fast'];
+  document.getElementById('vSpeed').textContent = labels[speed - 1];
+});
+
+document.getElementById('btnAuto').addEventListener('click', () => {
+  autoSweep = true;
+  sweepDir = 1;
+  autoAnimate();
+});
+
+document.getElementById('btnPause').addEventListener('click', () => {
+  autoSweep = false;
+  cancelAnimationFrame(animId);
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  autoSweep = false;
+  cancelAnimationFrame(animId);
+  dist = 0;
+  strength = 2;
+  speed = 2;
+  document.getElementById('slDist').value = 0;
+  document.getElementById('slStrength').value = 2;
+  document.getElementById('slSpeed').value = 2;
+  document.getElementById('vDist').textContent = '0 mm';
+  document.getElementById('vStrength').textContent = 'Strong';
+  document.getElementById('vSpeed').textContent = 'Normal';
+  particles = [];
+  frameCount = 0;
+  render();
+});
+
+/* ===== INIT ===== */
+render();
+</script>
+</body>
+</html>
